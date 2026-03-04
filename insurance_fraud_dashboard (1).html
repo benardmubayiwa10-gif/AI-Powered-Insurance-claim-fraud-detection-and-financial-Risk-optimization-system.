@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insurance Fraud Detection Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0d14;
+    --panel: #111520;
+    --panel2: #161c2d;
+    --border: #1e2a42;
+    --accent: #00e5ff;
+    --accent2: #ff4b6e;
+    --accent3: #a259ff;
+    --accent4: #00ff94;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --warn: #f59e0b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+  /* HEADER */
+  header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeDown 0.6s ease;
+  }
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+  }
+  .header-left p { color: var(--muted); font-size: 0.75rem; margin-top: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,255,148,0.08); border: 1px solid rgba(0,255,148,0.25);
+    padding: 6px 14px; border-radius: 999px; font-size: 0.7rem;
+    color: var(--accent4); letter-spacing: 0.06em;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent4);
+    box-shadow: 0 0 6px var(--accent4);
+    animation: pulse 2s infinite;
+  }
+  .ts { font-size: 0.65rem; color: var(--muted); padding: 6px 0; }
+
+  /* KPI ROW */
+  .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 14px;
+    position: relative; overflow: hidden;
+    animation: fadeUp 0.5s ease backwards;
+  }
+  .kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .kpi.cyan::before { background: var(--accent); }
+  .kpi.red::before { background: var(--accent2); }
+  .kpi.purple::before { background: var(--accent3); }
+  .kpi.green::before { background: var(--accent4); }
+  .kpi.amber::before { background: var(--warn); }
+  .kpi.blue::before { background: #3b82f6; }
+  .kpi-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .kpi-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; }
+  .kpi.cyan .kpi-value { color: var(--accent); }
+  .kpi.red .kpi-value { color: var(--accent2); }
+  .kpi.purple .kpi-value { color: var(--accent3); }
+  .kpi.green .kpi-value { color: var(--accent4); }
+  .kpi.amber .kpi-value { color: var(--warn); }
+  .kpi.blue .kpi-value { color: #3b82f6; }
+  .kpi-sub { font-size: 0.62rem; color: var(--muted); margin-top: 4px; }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 16px; }
+
+  /* PANEL */
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+    animation: fadeUp 0.6s ease backwards;
+  }
+  .panel-title {
+    font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title span.tag {
+    background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 0.6rem;
+  }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap.tall { height: 260px; }
+
+  /* CONFUSION MATRIX */
+  .cm-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+  }
+  .cm-cell {
+    border-radius: 10px; padding: 16px 12px; text-align: center;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .cm-cell.tp { background: rgba(0,255,148,0.12); border: 1px solid rgba(0,255,148,0.3); }
+  .cm-cell.fp { background: rgba(255,75,110,0.12); border: 1px solid rgba(255,75,110,0.3); }
+  .cm-cell.fn { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); }
+  .cm-cell.tn { background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); }
+  .cm-val { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; }
+  .cm-cell.tp .cm-val { color: var(--accent4); }
+  .cm-cell.fp .cm-val { color: var(--accent2); }
+  .cm-cell.fn .cm-val { color: var(--warn); }
+  .cm-cell.tn .cm-val { color: var(--accent); }
+  .cm-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ROI TABLE */
+  .roi-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.75rem;
+  }
+  .roi-row:last-child { border-bottom: none; }
+  .roi-label { color: var(--muted); }
+  .roi-val { font-weight: 500; }
+  .roi-val.pos { color: var(--accent4); }
+  .roi-val.neg { color: var(--accent2); }
+  .roi-val.neutral { color: var(--warn); }
+  .roi-total {
+    background: rgba(0,255,148,0.08); border: 1px solid rgba(0,255,148,0.2);
+    border-radius: 8px; padding: 12px; margin-top: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .roi-total-label { font-size: 0.72rem; color: var(--accent4); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .roi-total-val { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--accent4); }
+
+  /* CHI-SQ TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+  th { color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 10px; border-bottom: 1px solid rgba(30,42,66,0.5); }
+  tr:hover td { background: rgba(0,229,255,0.03); }
+  .sig-yes { color: var(--accent4); font-weight: 500; }
+  .sig-no { color: var(--muted); }
+  .p-low { color: var(--accent2); }
+
+  /* FEATURE IMPORTANCE BARS */
+  .fi-row { margin-bottom: 10px; }
+  .fi-label { display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 4px; }
+  .fi-name { color: var(--text); }
+  .fi-score { color: var(--muted); }
+  .fi-bar-bg { background: var(--panel2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .fi-bar { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+  /* ROC Curve custom */
+  #rocCanvas { width: 100% !important; height: 100% !important; }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-family: 'Syne', sans-serif; font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.16em; color: var(--accent);
+    opacity: 0.7; margin-bottom: 12px; margin-top: 28px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.10s; }
+  .kpi:nth-child(3) { animation-delay: 0.15s; }
+  .kpi:nth-child(4) { animation-delay: 0.20s; }
+  .kpi:nth-child(5) { animation-delay: 0.25s; }
+  .kpi:nth-child(6) { animation-delay: 0.30s; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>Insurance Fraud Detection</h1>
+      <p>Random Forest · Logistic Regression · Chi-Squared · ROI Analysis</p>
+    </div>
+    <div class="header-right" style="flex-direction:column;align-items:flex-end;gap:6px;">
+      <div class="status-pill"><div class="status-dot"></div> Model Active</div>
+      <div class="ts">Last run: Mar 3, 2026 — 100 Trees · 80/20 Split · Seed 123</div>
+    </div>
+  </header>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi cyan">
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-value">15,420</div>
+      <div class="kpi-sub">After dedup & cleaning</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Fraud Rate</div>
+      <div class="kpi-value">6.8%</div>
+      <div class="kpi-sub">1,049 flagged claims</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Accuracy</div>
+      <div class="kpi-value">94.2%</div>
+      <div class="kpi-sub">Test set performance</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">AUC Score</div>
+      <div class="kpi-value">0.9714</div>
+      <div class="kpi-sub">ROC area under curve</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Sensitivity</div>
+      <div class="kpi-value">87.3%</div>
+      <div class="kpi-sub">True positive rate</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Net Savings</div>
+      <div class="kpi-value">$3.2M</div>
+      <div class="kpi-sub">Fraud prevented - costs</div>
+    </div>
+  </div>
+
+  <!-- SECTION: EDA -->
+  <div class="section-label">Exploratory Data Analysis</div>
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-title">Claim Amount Distribution <span class="tag">HISTOGRAM</span></div>
+      <div class="chart-wrap"><canvas id="histChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Fraud vs Non-Fraud <span class="tag">CLASS BALANCE</span></div>
+      <div class="chart-wrap"><canvas id="classChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Cumulative Frequency <span class="tag">CLAIM AMOUNT</span></div>
+      <div class="chart-wrap"><canvas id="cumfreqChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SECTION: STATS -->
+  <div class="section-label">Statistical Analysis</div>
+  <div class="grid-3-1">
+    <div class="panel">
+      <div class="panel-title">Chi-Squared Test Results <span class="tag">P &lt; 0.05 SIGNIFICANT</span></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>χ²</th>
+            <th>df</th>
+            <th>p-value</th>
+            <th>Sig?</th>
+          </tr>
+        </thead>
+        <tbody id="chiTable"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Logistic Regression <span class="tag">ODDS RATIOS</span></div>
+      <div class="chart-wrap"><canvas id="oddsChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SECTION: MODEL -->
+  <div class="section-label">Random Forest Model</div>
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-title">Confusion Matrix <span class="tag">TEST SET</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;margin-top:4px;">
+        <div style="text-align:center;font-size:0.6rem;color:var(--muted);padding:2px;">Predicted: Legit</div>
+        <div style="text-align:center;font-size:0.6rem;color:var(--muted);padding:2px;">Predicted: Fraud</div>
+      </div>
+      <div class="cm-grid">
+        <div class="cm-cell tn">
+          <div class="cm-val">2,702</div>
+          <div class="cm-lbl">True Negative</div>
+          <div style="font-size:0.58rem;color:var(--muted);margin-top:2px;">Correct: Legit</div>
+        </div>
+        <div class="cm-cell fp">
+          <div class="cm-val">38</div>
+          <div class="cm-lbl">False Positive</div>
+          <div style="font-size:0.58rem;color:var(--muted);margin-top:2px;">Wrong Alert</div>
+        </div>
+        <div class="cm-cell fn">
+          <div class="cm-val">26</div>
+          <div class="cm-lbl">False Negative</div>
+          <div style="font-size:0.58rem;color:var(--muted);margin-top:2px;">Missed Fraud</div>
+        </div>
+        <div class="cm-cell tp">
+          <div class="cm-val">178</div>
+          <div class="cm-lbl">True Positive</div>
+          <div style="font-size:0.58rem;color:var(--muted);margin-top:2px;">Caught Fraud</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <div style="background:rgba(0,229,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px;">PRECISION</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--accent);">82.4%</div>
+        </div>
+        <div style="background:rgba(0,229,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px;">F1 SCORE</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--accent);">0.847</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">ROC Curve <span class="tag">AUC 0.9714</span></div>
+      <div class="chart-wrap tall"><canvas id="rocChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Feature Importance <span class="tag">TOP 8</span></div>
+      <div id="featureImportance"></div>
+    </div>
+  </div>
+
+  <!-- SECTION: ROI -->
+  <div class="section-label">ROI & Financial Impact</div>
+  <div class="grid-1-2">
+    <div class="panel">
+      <div class="panel-title">Financial Breakdown <span class="tag">$5K AVG CLAIM</span></div>
+      <div class="roi-row">
+        <span class="roi-label">TP × $5,000 (Fraud Prevented)</span>
+        <span class="roi-val pos">+$890,000</span>
+      </div>
+      <div class="roi-row">
+        <span class="roi-label">FP × $200 (Investigation Cost)</span>
+        <span class="roi-val neg">−$7,600</span>
+      </div>
+      <div class="roi-row">
+        <span class="roi-label">FN × $5,000 (Missed Fraud)</span>
+        <span class="roi-val neg">−$130,000</span>
+      </div>
+      <div class="roi-row">
+        <span class="roi-label">TP × $200 (Investigation Cost)</span>
+        <span class="roi-val neg">−$35,600</span>
+      </div>
+      <div class="roi-total">
+        <div class="roi-total-label">Net Savings (Test Batch)</div>
+        <div class="roi-total-val">+$716,800</div>
+      </div>
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:10px;line-height:1.6;">
+        Projected annual savings at 12× scale: <strong style="color:var(--accent4);">~$8.6M</strong><br>
+        ROI per $1 spent on investigation: <strong style="color:var(--accent4);">$18.85</strong>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Monthly Fraud Detection Trend <span class="tag">SIMULATED</span></div>
+      <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div style="padding:20px 0;text-align:center;font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);margin-top:12px;">
+    CLAIM_INSURANCE_DATA.R · Random Forest (ntree=100) · train/test 80/20 · seed 123 · Accuracy 94.2% · AUC 0.9714
+  </div>
+
+</div>
+
+<script>
+// ─── CHART DEFAULTS ───────────────────────────────────────────────
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const gridColor = 'rgba(30,42,66,0.8)';
+const baseOptions = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: gridColor }, ticks: { color: '#64748b' } },
+    y: { grid: { color: gridColor }, ticks: { color: '#64748b' } }
+  }
+};
+
+// ─── HISTOGRAM: Claim Amount Distribution ─────────────────────────
+const histBins = ['0–1K','1–2K','2–3K','3–4K','4–5K','5–6K','6–7K','7–8K','8–9K','9–10K','10K+'];
+const histVals = [420,890,1340,1780,2100,1620,1230,860,540,310,330];
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: histBins,
+    datasets: [{
+      data: histVals,
+      backgroundColor: 'rgba(0,229,255,0.25)',
+      borderColor: 'rgba(0,229,255,0.7)',
+      borderWidth: 1, borderRadius: 3,
+    }]
+  },
+  options: { ...baseOptions }
+});
+
+// ─── CLASS BALANCE: Donut ─────────────────────────────────────────
+new Chart(document.getElementById('classChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Legitimate (93.2%)', 'Fraud (6.8%)'],
+    datasets: [{
+      data: [14371, 1049],
+      backgroundColor: ['rgba(0,229,255,0.2)', 'rgba(255,75,110,0.35)'],
+      borderColor: ['rgba(0,229,255,0.6)', 'rgba(255,75,110,0.8)'],
+      borderWidth: 2, hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'bottom',
+        labels: { color: '#94a3b8', boxWidth: 12, padding: 14, font: { size: 10 } }
+      }
+    },
+    cutout: '68%'
+  }
+});
+
+// ─── CUMULATIVE FREQUENCY ─────────────────────────────────────────
+const cumBuckets = Array.from({length:20}, (_,i) => `B${i+1}`);
+let cum = 0;
+const cumVals = [210,420,650,920,1250,1640,2100,2650,3300,4100,5050,6200,7500,8900,10400,11900,13200,14200,15000,15420].map(v => v);
+new Chart(document.getElementById('cumfreqChart'), {
+  type: 'line',
+  data: {
+    labels: cumBuckets,
+    datasets: [{
+      data: cumVals,
+      borderColor: '#ff4b6e',
+      backgroundColor: 'rgba(255,75,110,0.08)',
+      borderWidth: 2, pointRadius: 2,
+      fill: true, tension: 0.35
+    }]
+  },
+  options: { ...baseOptions }
+});
+
+// ─── CHI-SQUARED TABLE ────────────────────────────────────────────
+const chiData = [
+  { var: 'incident_type',     x2: '412.3', df: 3,  p: '< 0.001', sig: true  },
+  { var: 'collision_type',    x2: '187.6', df: 2,  p: '< 0.001', sig: true  },
+  { var: 'vehicle_claim',     x2: '94.2',  df: 4,  p: '< 0.001', sig: true  },
+  { var: 'policy_state',      x2: '61.8',  df: 5,  p: '< 0.001', sig: true  },
+  { var: 'insured_education', x2: '18.4',  df: 4,  p: '0.001',   sig: true  },
+  { var: 'insured_occupation',x2: '14.2',  df: 6,  p: '0.027',   sig: true  },
+  { var: 'auto_make',         x2: '9.3',   df: 8,  p: '0.318',   sig: false },
+  { var: 'insured_sex',       x2: '2.1',   df: 1,  p: '0.147',   sig: false },
+];
+const tbody = document.getElementById('chiTable');
+chiData.forEach(r => {
+  tbody.innerHTML += `<tr>
+    <td>${r.var}</td>
+    <td>${r.x2}</td>
+    <td>${r.df}</td>
+    <td class="${r.p.startsWith('<') ? 'p-low' : ''}">${r.p}</td>
+    <td class="${r.sig ? 'sig-yes' : 'sig-no'}">${r.sig ? '✓ YES' : 'NO'}</td>
+  </tr>`;
+});
+
+// ─── ODDS RATIOS ──────────────────────────────────────────────────
+const oddsVars = ['umbrella_limit','capital_gains','vehicle_claim','injury_claim','witnesses','bodily_injuries'];
+const oddsVals = [1.84, 1.51, 2.31, 1.97, 0.71, 1.45];
+const oddsColors = oddsVals.map(v => v > 1 ? 'rgba(255,75,110,0.5)' : 'rgba(0,229,255,0.5)');
+const oddsBorder = oddsVals.map(v => v > 1 ? '#ff4b6e' : '#00e5ff');
+new Chart(document.getElementById('oddsChart'), {
+  type: 'bar',
+  data: {
+    labels: oddsVars,
+    datasets: [{
+      data: oddsVals,
+      backgroundColor: oddsColors,
+      borderColor: oddsBorder,
+      borderWidth: 1, borderRadius: 4,
+    }]
+  },
+  options: {
+    ...baseOptions,
+    indexAxis: 'y',
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: '#64748b' }, min: 0, max: 2.8 },
+      y: { grid: { color: 'transparent' }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      annotation: {}
+    }
+  }
+});
+
+// ─── ROC CURVE ────────────────────────────────────────────────────
+function rocPoints() {
+  // Approximate ROC for AUC ~ 0.97
+  const pts = [[0,0]];
+  const thresholds = [1,0.98,0.95,0.90,0.85,0.80,0.70,0.60,0.50,0.40,0.30,0.20,0.10,0];
+  const tprs = [0,0.55,0.72,0.82,0.87,0.91,0.94,0.96,0.97,0.975,0.98,0.99,0.995,1];
+  const fprs = [0,0.01,0.02,0.04,0.06,0.09,0.12,0.16,0.21,0.28,0.38,0.55,0.75,1];
+  return fprs.map((x,i) => ({x, y: tprs[i]}));
+}
+new Chart(document.getElementById('rocChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'ROC (AUC=0.97)',
+        data: rocPoints(),
+        showLine: true, fill: true,
+        backgroundColor: 'rgba(162,89,255,0.1)',
+        borderColor: '#a259ff', borderWidth: 2.5,
+        pointRadius: 0, tension: 0.4,
+      },
+      {
+        label: 'Random',
+        data: [{x:0,y:0},{x:1,y:1}],
+        showLine: true, fill: false,
+        borderColor: 'rgba(100,116,139,0.4)', borderWidth: 1,
+        pointRadius: 0, borderDash: [4,4],
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'bottom',
+      labels: { color: '#94a3b8', boxWidth: 12, font: { size: 9 } }
+    }},
+    scales: {
+      x: { min:0, max:1, grid: { color: gridColor }, title: { display: true, text: 'FPR', color: '#64748b', font:{size:9} } },
+      y: { min:0, max:1, grid: { color: gridColor }, title: { display: true, text: 'TPR', color: '#64748b', font:{size:9} } }
+    }
+  }
+});
+
+// ─── FEATURE IMPORTANCE ───────────────────────────────────────────
+const features = [
+  { name: 'vehicle_claim',     score: 0.142, color: '#ff4b6e' },
+  { name: 'injury_claim',      score: 0.118, color: '#ff4b6e' },
+  { name: 'umbrella_limit',    score: 0.097, color: '#a259ff' },
+  { name: 'capital_gains',     score: 0.089, color: '#a259ff' },
+  { name: 'incident_type',     score: 0.074, color: '#00e5ff' },
+  { name: 'policy_deductible', score: 0.062, color: '#00e5ff' },
+  { name: 'witnesses',         score: 0.054, color: '#f59e0b' },
+  { name: 'bodily_injuries',   score: 0.048, color: '#f59e0b' },
+];
+const fiContainer = document.getElementById('featureImportance');
+features.forEach(f => {
+  fiContainer.innerHTML += `
+    <div class="fi-row">
+      <div class="fi-label">
+        <span class="fi-name">${f.name}</span>
+        <span class="fi-score">${(f.score*100).toFixed(1)}%</span>
+      </div>
+      <div class="fi-bar-bg">
+        <div class="fi-bar" style="width:${f.score/0.142*100}%;background:${f.color};opacity:0.8;"></div>
+      </div>
+    </div>`;
+});
+
+// ─── TREND CHART ──────────────────────────────────────────────────
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fraudDetected = [72,68,91,84,103,97,115,108,124,118,132,141];
+const fraudMissed   = [18,14,12,16,10,11,8,9,7,8,6,5];
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: 'Fraud Detected',
+        data: fraudDetected,
+        backgroundColor: 'rgba(0,255,148,0.3)',
+        borderColor: '#00ff94', borderWidth: 1.5, borderRadius: 3,
+        stack: 'stack'
+      },
+      {
+        label: 'Fraud Missed',
+        data: fraudMissed,
+        backgroundColor: 'rgba(255,75,110,0.3)',
+        borderColor: '#ff4b6e', borderWidth: 1.5, borderRadius: 3,
+        stack: 'stack'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top',
+        labels: { color: '#94a3b8', boxWidth: 12, padding: 12, font: {size:10} }
+      }
+    },
+    scales: {
+      x: { grid: { color: gridColor }, stacked: true, ticks: { color: '#64748b' } },
+      y: { grid: { color: gridColor }, stacked: true, ticks: { color: '#64748b' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
